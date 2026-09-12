@@ -1,0 +1,9 @@
+[SEQUENCIAL] N=300 | Tempo: 5531.56 ms
+[SEQUENCIAL] N=600 | Tempo: 56341.11 ms
+[SEQUENCIAL] N=1000 | Tempo: 272158.90 ms
+[THREADS] N=300 | Tempo: 2838.22 ms
+[THREADS] N=600 | Tempo: 23882.91 ms
+[THREADS] N=1000 | Tempo: 117362.89 ms
+[MPI] N=300 | Processos=4 | Tempo: 4970.76 ms
+[MPI] N=600 | Processos=4 | Tempo: 36592.29 ms
+[MPI] N=1000 | Processos=4 | Tempo: 191238.89 ms

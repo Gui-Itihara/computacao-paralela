@@ -1,0 +1,6 @@
+[SEQUENCIAL] PI aproximado: 3.141168
+[SEQUENCIAL] Tempo: 3651.81 ms
+[SEQUENCIAL] PI aproximado: 3.1408788
+[SEQUENCIAL] Tempo: 3340.83 ms
+[SEQUENCIAL] PI aproximado: 3.1413724
+[SEQUENCIAL] Tempo: 2961.61 ms
