@@ -102,29 +102,57 @@ comm.Barrier()
 t_inicio = MPI.Wtime()
 
 # =========================================================
-# Etapa 5 – Divisão da radiografia com Scatter (MPI_Scatter)
+# Etapa 5 – Divisão da radiografia com Scatterv (MPI_Scatterv)
 # Divide por faixas horizontais (linhas). Trata o caso em que
 # o número de linhas não é divisível pelo número de processos:
 # os primeiros (ROWS % size) processos recebem uma linha extra.
+#
+# Scatterv (versão buferizada) é usado em vez do Scatter comum
+# porque cada processo recebe uma quantidade DIFERENTE de dados
+# (contagens desiguais), o que exige informar explicitamente,
+# para cada processo, quantos elementos (sendcounts) e a partir
+# de que posição do buffer de origem (displs) ele deve receber.
 # =========================================================
-partes = None
-faixas = None  # guarda (linha_inicio, linha_fim) de cada processo
+faixas = None
+sendcounts = None
+displs = None
+sendbuf = None
+
 if rank == 0:
     base = ROWS // size
     resto = ROWS % size
-    partes = []
     faixas = []
     linha_atual = 0
     for p in range(size):
         n_linhas = base + (1 if p < resto else 0)
         inicio, fim = linha_atual, linha_atual + n_linhas
-        partes.append(radiografia[inicio:fim, :])
         faixas.append((inicio, fim))
         linha_atual = fim
 
-faixas = comm.bcast(faixas, root=0)  # todo processo sabe sua própria faixa (e das outras, se precisar)
-minha_faixa = comm.scatter(partes, root=0)
+    # sendcounts: quantidade de ELEMENTOS (não linhas) que cada processo recebe
+    sendcounts = np.array([(fim - inicio) * COLS for (inicio, fim) in faixas], dtype=np.int64)
+    # displs: deslocamento (em elementos) de onde começa a fatia de cada processo
+    displs = np.array([inicio * COLS for (inicio, fim) in faixas], dtype=np.int64)
+    # buffer de envio: a imagem inteira "achatada" em uma linha só (row-major),
+    # compatível com os deslocamentos calculados acima
+    sendbuf = np.ascontiguousarray(radiografia.flatten(), dtype=np.int32)
+
+# todo processo precisa saber sua própria faixa (linha_inicio, linha_fim)
+# para alocar o buffer de recebimento do tamanho certo
+faixas = comm.bcast(faixas, root=0)
 linha_inicio, linha_fim = faixas[rank]
+meu_count = (linha_fim - linha_inicio) * COLS
+
+# cada processo aloca o buffer onde vai receber sua fatia
+recvbuf = np.empty(meu_count, dtype=np.int32)
+
+if rank == 0:
+    comm.Scatterv([sendbuf, sendcounts, displs, MPI.INT], recvbuf, root=0)
+else:
+    comm.Scatterv(None, recvbuf, root=0)
+
+# reconstrói a fatia recebida como matriz 2D (linhas x colunas)
+minha_faixa = recvbuf.reshape((linha_fim - linha_inicio, COLS))
 
 # =========================================================
 # Etapa 6 – Análise local de cada processo
